@@ -6,7 +6,7 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 # Load the model and tokenizer
 @st.cache(allow_output_mutation=True)
 def load_resources():
-    model = load_model("sentiment_rnn_model.h5")  # Load pre-trained model
+    model = load_model("rnn_sentiment_model.h5")  # Load pre-trained model
     with open("tokenizer.pkl", "rb") as file:     # Load Tokenizer
         tokenizer = pickle.load(file)
     return model, tokenizer
