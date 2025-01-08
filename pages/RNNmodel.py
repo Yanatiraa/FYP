@@ -4,7 +4,7 @@ import numpy as np
 import pickle
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-from spellchecker import SpellChecker
+from textblob import TextBlob
 import os
 
 # Load tokenizer and model
@@ -27,9 +27,8 @@ def preprocess_text(text):
 
 # Spell correction function
 def correct_spelling(text):
-    spell = SpellChecker()
-    corrected = " ".join([spell.correction(word) for word in text.split()])
-    return corrected
+    blob = TextBlob(text)
+    return str(blob.correct())
 
 # Main Streamlit Application
 def main():
