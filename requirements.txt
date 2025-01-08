@@ -9,4 +9,3 @@ pyspellchecker
 numpy
 matplotlib
 seaborn
-spellchecker
