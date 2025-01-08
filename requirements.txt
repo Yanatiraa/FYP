@@ -6,3 +6,7 @@ tensorflow
 nltk
 pickle-mixin
 pyspellchecker
+numpy
+matplotlib
+seaborn
+spellchecker
