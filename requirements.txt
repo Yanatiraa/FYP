@@ -8,4 +8,4 @@ pickle-mixin
 numpy
 matplotlib
 seaborn
-pyspellchecker
+textblob
