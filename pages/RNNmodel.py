@@ -26,9 +26,13 @@ def preprocess_text(text):
     return text
 
 # Spell correction function
-def correct_spelling(text):
-    blob = TextBlob(text)
-    return str(blob.correct())
+    spell = SpellChecker()
+    misspelled_words = [word for word in comment.split() if word not in spell]
+    corrected_comment = " ".join([spell.correction(word) for word in comment.split()])
+
+    if misspelled_words:
+        st.warning(f"Misspelled words detected: {', '.join(misspelled_words)}")
+        st.info(f"Auto-corrected comment: {corrected_comment}")
 
 # Main Streamlit Application
 def main():
