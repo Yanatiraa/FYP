@@ -4,10 +4,12 @@ import numpy as np
 import pickle
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-from spellchecker import SpellChecker
+from textblob import TextBlob
 import os
+import re
 
 # Load tokenizer and model
+@st.cache_resource
 def load_tokenizer_and_model():
     with open("tokenizer.pkl", "rb") as handle:
         tokenizer = pickle.load(handle)
@@ -18,21 +20,16 @@ tokenizer, sentiment_model = load_tokenizer_and_model()
 
 # Preprocessing function
 def preprocess_text(text):
-    import re
     text = text.lower()
-    text = re.sub(r'<.*?>', '', text)
-    text = re.sub(r'[^\w\s]', '', text)
-    text = re.sub(r'\d+', '', text)
+    text = re.sub(r'<.*?>', '', text)  # Remove HTML tags
+    text = re.sub(r'[^\w\s]', '', text)  # Remove special characters
+    text = re.sub(r'\d+', '', text)  # Remove numbers
     return text
 
 # Spell correction function
-    spell = SpellChecker()
-    misspelled_words = [word for word in comment.split() if word not in spell]
-    corrected_comment = " ".join([spell.correction(word) for word in comment.split()])
-
-    if misspelled_words:
-        st.warning(f"Misspelled words detected: {', '.join(misspelled_words)}")
-        st.info(f"Auto-corrected comment: {corrected_comment}")
+def correct_spelling(text):
+    blob = TextBlob(text)
+    return str(blob.correct())
 
 # Main Streamlit Application
 def main():
@@ -73,11 +70,11 @@ def main():
         negative_features = df[df["Choice"].str.contains("Bad|Too Small|Too Large|Discomfort|Outdated|Unsuitable")]
 
         if not positive_features.empty:
-            st.write("**Recommendations for Marketing:**")
+            st.write("Recommendations for Marketing:")
             st.write(positive_features["Choice"].value_counts().index[0])
 
         if not negative_features.empty:
-            st.write("**Reminders for Improvement:**")
+            st.write("Reminders for Improvement:")
             st.write(negative_features["Choice"].value_counts().index[0])
 
     # Section 3: Review Sentiment Analysis
