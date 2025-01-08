@@ -6,6 +6,6 @@ tensorflow
 nltk
 pickle-mixin
 numpy
-matplotlib
-seaborn
-textblob
+pandas
+scikit-learn
+nltk
