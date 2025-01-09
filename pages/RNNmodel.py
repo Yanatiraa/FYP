@@ -1,102 +1,73 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
 import pickle
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-from textblob import TextBlob
-import os
 import re
+from nltk.stem import SnowballStemmer
+from nltk.corpus import stopwords
+from spellchecker import SpellChecker
+import nltk
 
-# Load tokenizer and model
+# Download NLTK resources
+nltk.download('stopwords')
+
+# Preprocessing Function
+def preprocess_text(text):
+    stemmer = SnowballStemmer('english')
+    stop = set(stopwords.words('english'))
+    text = text.lower()
+    text = re.sub(r'<.*?>', '', text)  # Remove HTML tags
+    text = re.sub(r'[^\w\s]', '', text)  # Remove punctuation
+    text = " ".join([stemmer.stem(word) for word in text.split() if word not in stop])
+    return text
+
+# Load Model and Tokenizer
 @st.cache_resource
-def load_tokenizer_and_model():
+def load_resources():
     with open("tokenizer.pkl", "rb") as handle:
         tokenizer = pickle.load(handle)
     model = load_model("rnn_sentiment_model.h5")
     return tokenizer, model
 
-tokenizer, sentiment_model = load_tokenizer_and_model()
-
-# Preprocessing function
-def preprocess_text(text):
-    text = text.lower()
-    text = re.sub(r'<.*?>', '', text)  # Remove HTML tags
-    text = re.sub(r'[^\w\s]', '', text)  # Remove special characters
-    text = re.sub(r'\d+', '', text)  # Remove numbers
-    return text
-
-# Spell correction function
-def correct_spelling(text):
-    blob = TextBlob(text)
-    return str(blob.correct())
-
 # Main Streamlit Application
 def main():
-    st.title("Sentiment Analysis of Fashion Product Reviews")
+    st.title("Sentiment Analysis for Product Reviews")
+    st.write("Analyze the sentiment of product reviews based on user input.")
 
-    # Section 1: Feature Selection
-    st.header("Feature Selection")
-    features = {
-        "Sizing": ["True to Size", "Too Small", "Too Large"],
-        "Quality": ["Good Quality", "Bad Quality"],
-        "Comfort": ["Good Comfort", "Discomfort"],
-        "Design": ["Nice Design", "Outdated Design"],
-        "Functionality": ["Suitable", "Unsuitable"]
-    }
+    # User Input for Comment
+    comment = st.text_input("Enter your comment about the product:")
 
-    user_choices = {}
-    for feature, options in features.items():
-        user_choices[feature] = st.radio(f"{feature}:", options, index=-1)
+    # Spell check the user input
+    spell = SpellChecker()
+    misspelled_words = [word for word in comment.split() if word not in spell]
+    corrected_comment = " ".join([spell.correction(word) for word in comment.split()])
 
-    # Store user choices in a database (here using a CSV for simplicity)
-    if st.button("Submit Feature Selection"):
-        if not os.path.exists("user_choices.csv"):
-            df = pd.DataFrame(columns=["Feature", "Choice"])
-        else:
-            df = pd.read_csv("user_choices.csv")
-        
-        for feature, choice in user_choices.items():
-            if choice:
-                df = pd.concat([df, pd.DataFrame({"Feature": [feature], "Choice": [choice]})])
-        df.to_csv("user_choices.csv", index=False)
-        st.success("Your feature choices have been recorded!")
+    if misspelled_words:
+        st.warning(f"Misspelled words detected: {', '.join(misspelled_words)}")
+        st.info(f"Auto-corrected comment: {corrected_comment}")
 
-    # Section 2: Recommendations and Reminders
-    st.header("Recommendations and Reminders")
-    if os.path.exists("user_choices.csv"):
-        df = pd.read_csv("user_choices.csv")
-        positive_features = df[df["Choice"].str.contains("Good|True|Nice|Suitable")]
-        negative_features = df[df["Choice"].str.contains("Bad|Too Small|Too Large|Discomfort|Outdated|Unsuitable")]
-
-        if not positive_features.empty:
-            st.write("Recommendations for Marketing:")
-            st.write(positive_features["Choice"].value_counts().index[0])
-
-        if not negative_features.empty:
-            st.write("Reminders for Improvement:")
-            st.write(negative_features["Choice"].value_counts().index[0])
-
-    # Section 3: Review Sentiment Analysis
-    st.header("Review Sentiment Analysis")
-    user_review = st.text_input("Enter your review about the product:")
-    if user_review:
-        corrected_review = correct_spelling(user_review)
-        if corrected_review != user_review:
-            st.warning(f"Did you mean: {corrected_review}?")
-
-        if st.button("Analyze Sentiment"):
-            seq = tokenizer.texts_to_sequences([preprocess_text(corrected_review)])
-            padded_seq = pad_sequences(seq, maxlen=100)
-            prediction = sentiment_model.predict(padded_seq)[0][0]
-            sentiment = "Positive" if prediction > 0.5 else "Negative"
-            st.success(f"The sentiment of your review is: {sentiment}")
-
-    # Section 4: Product Image Upload
-    st.header("Upload Product Image")
-    uploaded_image = st.file_uploader("Upload an image of the product:", type=["jpg", "jpeg", "png"])
+    # Image Upload for Product
+    uploaded_image = st.file_uploader("Upload a product image (optional):", type=["jpg", "jpeg", "png"])
     if uploaded_image:
         st.image(uploaded_image, caption="Uploaded Product Image", use_column_width=True)
+
+    # Sentiment Analysis
+    if st.button("Analyze Sentiment"):
+        if corrected_comment:
+            tokenizer, model = load_resources()
+
+            # Preprocess and predict
+            processed_text = preprocess_text(corrected_comment)
+            sequence = tokenizer.texts_to_sequences([processed_text])
+            padded_sequence = pad_sequences(sequence, maxlen=100)
+
+            prediction = model.predict(padded_sequence)[0][0]
+            sentiment = "Positive" if prediction > 0.5 else "Negative"
+
+            # Display sentiment result
+            st.success(f"Sentiment: {sentiment}")
+        else:
+            st.error("Please enter a valid comment.")
 
 if __name__ == "__main__":
     main()
